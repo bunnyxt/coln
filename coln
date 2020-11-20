@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# A simple bash script which counts the number of columns in the given file.
+# Usage   : ./coln <filename>
+# Author  : bunnyxt
+# GitHub  : https://github.com/bunnyxt/coln
+# Version : 0.0.1
+# Date    : 2020-11-20
+
+filename=$1
+header=`head -n 1 $filename`
+count=0
+for i in $header; do 
+  ((count++)); 
+done
+echo $count
