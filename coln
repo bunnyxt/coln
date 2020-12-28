@@ -1,16 +1,86 @@
 #!/bin/bash
 
 # A simple bash script which counts the number of columns in the given file.
-# Usage   : ./coln <filename>
+# Usage   : coln [-v] [-s skipLine] [-t separator] [file ...]
 # Author  : bunnyxt
 # GitHub  : https://github.com/bunnyxt/coln
-# Version : 0.0.1
-# Date    : 2020-11-20
+# Version : 0.1.0
+# Date    : 2020-12-28
 
-filename=$1
-header=`head -n 1 $filename`
-count=0
-for i in $header; do 
-  ((count++)); 
+usage='Usage: coln [-v] [-s skipLine] [-t separator] [file ...]'
+
+# parse opts
+skipLine=0
+while getopts 'vs:t:' OPTION; do
+  case $OPTION in 
+    v)
+      verbose=1
+      ;;
+    s)
+      skipLine=$OPTARG
+      if [ ! `echo $skipLine | sed -n '/^[0-9][0-9]*$/p'` ]; then
+        echo 'Error! skipLine should be a non negative integer!'
+        echo $usage
+        exit 1
+      else
+        setSkipLine=1
+      fi
+      ;;
+    t)
+      separator=$OPTARG
+      setSeparator=1
+      ;;
+    ?)
+      echo $usage
+      exit 1
+      ;;
+    esac
 done
-echo $count
+[[ verbose -eq 1 && setSkipLine -eq 1 ]] && echo "coln: will skip top ${skipLine} lines"
+[[ verbose -eq 1 && setSeparator -eq 1 ]]  && echo "coln: change column separator to ${separator}"
+
+# remove opts
+for (( i=0; i<$OPTIND-1; i++)); do
+  shift
+done
+
+# define count file function
+function countFile {
+  filename=$1
+  if [[ -e $filename ]]; then
+    header=`cat $filename | sed -n "$((skipLine + 1)),$((skipLine + 1))p" | sed "s/\r$//"`  # remove \r at tail
+    count=0
+    if [[ setSeparator -eq 1 ]]; then  # custom separator
+      for (( i=0; i<${#header}; i++)); do
+        c=${header:$i:1}
+        if [[ ${c} == ${separator} ]]; then
+          ((count++))
+        fi
+      done
+      if [[ ${header:${#header}-1:1} != $separator ]]; then  # add last column (separator omitted)
+        ((count++))
+      fi
+    else  # default separator
+      for i in $header; do 
+        ((count++)); 
+      done
+    fi
+    echo -e "$filename\t$count"
+  else
+    echo "Error! input file ${filename} not found!"
+    echo $usage
+    exit 1
+  fi
+}
+
+# read files, count and output
+if [[ $# -eq 0 ]]; then
+  echo 'Error! no input file assigned'
+  echo $usage
+  exit 1
+else
+  while [[ $1 != '' ]]; do
+    countFile $1
+    shift
+  done
+fi
